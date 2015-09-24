@@ -1,0 +1,29 @@
+body {
+	font-family: 'Open Sans', 'Helvetica', sans-serif;
+}
+
+h1 {
+	background-color: #E0E0E0;
+	padding: 10px;
+}
+
+div.wrapper {
+	max-width: 900px;
+	margin: auto;
+}
+
+div.content {
+	width: 95%;
+	margin: auto;
+}
+
+div#footer {
+	text-align: center;
+}
+
+hr {
+	border: 0;
+	height: 0;
+	border-top: 1px solid #e0e0e0;
+	margin-top: 20px;
+}
