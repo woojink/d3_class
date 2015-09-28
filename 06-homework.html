@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>Woojin Kim: Class 6 Homework</title>
+    <style>
+    /* Main components */
+      body {
+        font-family: 'Open Sans', 'Helvetica', sans-serif;
+        /*letter-spacing: -1px;*/
+      }
+
+      svg {
+        display: block;
+        margin: auto;
+      }
+
+      h1 {
+        text-align: center;
+        font-weight: normal;
+        margin: 50px auto 5px auto;
+      }
+
+      h2 {
+        background-color: #d3d3d3;
+        color: #fff;
+        width: 70%;
+        min-width: ;
+        padding: 10px 20px 10px 20px;
+        margin: 30px auto 20px auto;
+      }
+
+      /* divs */
+      div.main {
+        margin: auto;
+        max-width: 1000px;
+      }
+
+      div.subtitle {
+          text-align: center;
+      }
+
+      div.footer {
+        clear: both;
+        margin-top: 50px;
+        position: relative;
+        bottom: 25px;
+        right: 25px;
+        text-align: right;
+        font-size: 80%;
+        color: grey;
+      }
+
+      div.infobox {
+        /*float: right;*/
+        position: relative;
+        top: 25px;
+        visibility: hidden;    
+        display: inline-block;
+        vertical-align: top;
+        font-size: 90%;
+        }
+
+      div.source {
+        clear: both;
+        padding-top: 20px;
+      }
+
+      div.chart {
+        display: inline-block;
+      }
+
+      div.sub {
+        text-indent: 10px;
+      }
+
+      div#button-loc {
+        text-align: center;
+      }
+
+      /* Misc */
+      .label {
+        font-size: 80%;
+      }
+
+      .title {
+        font-weight: bold;
+      }
+
+      .axis text {
+        font-size: 80%;
+      }
+
+      .axis path, line {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+      }
+
+      .float-label {
+        font-size: 70%;
+        fill: #7F7F7F;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,300' rel='stylesheet' type='text/css'>
+  </head>
+  <body>
+    <h1>Woojin Kim (wk2246)</h1>
+    <div class="subtitle">Homework for Class 6</div>
+    <h2>#1</h2>
+    <div class="main">
+      <div id="chart-1" class="chart"></div>
+    </div>
+
+    <h2>#2</h2>
+    <div id="main2" class="main">
+      <div id="chart-2" class="chart"></div>
+      <div id="infobox-2" class="infobox">
+        <h3><span id="country-name"></span></h3>
+        <div>GDP per capita: <span id="GDP"></span></div>
+        <div>Population (millions): <span id="population"></span></div>
+        <div class="sub">(<span id="p0-14"></span>%/<span id="p15-64"></span>%/<span id="p65"></span>%)</div>
+        <div>Growth Rate: <span id="growth-rate"></span> %</div>
+        <div>Birth Rate (per 1,000) : <span id="birth-rate"></span></div>
+        <div>Death Rate (per 1,000): <span id="death-rate"></span></div>
+        <div>Migration rate: <span id="migration-rate"></span>%</div>
+        <div>Infant Mortality Rate (per 1,000) : <span id="infant-m"></span></div>
+        <div>Life Expectancy : <span id="le"></span></div>
+        <div class="sub">(Men: <span id="le-men"></span> / Women: <span id="le-women"></span>)</div>
+        <div>Fetility Rate: <span id="fertility"></span></div>
+      </div>
+    </div>
+    <div id="button-loc"></div>
+    <div class="main">
+      <p>Birth rate and infant mortality are negatively correlated with GDP per capita, while life expectancy is positively correlated with GDP per capita. The left button toggles between birth rate and life expectancy vs. GDP per capita. The right button shows infant mortality vs. GDP per capita.</p></div>
+
+    <div class="footer">2015-09-26</div>
+
+    <script>
+      // Import data
+      var country_data_raw = [
+        {"Country":"Algeria","Population (millions)":32.9,"0-14(%)":28.1,"15-64 (%)":67.1,">65 (%)":4.8,"Growth Rate (%)":1.22,"Birth rate (per 1000)":17.4,"Death Rate (per 1000)":4.61,"Migration Rate (%)":-0.35,"Infant mortality Rate (per 1000)":29.87,"Life Expectancy (LE) (years)":73.26,"LE Men":71.68,"LE women":74.92,"Fertility Rate Women":1.89,"GDP per capita":7700},
+        {"Country":"Bangladesh","Population (millions)":147.4,"0-14(%)":32.9,"15-64 (%)":63.6,">65 (%)":3.5,"Growth Rate (%)":2.09,"Birth rate (per 1000)":29.8,"Death Rate (per 1000)":8.27,"Migration Rate (%)":-0.68,"Infant mortality Rate (per 1000)":60.83,"Life Expectancy (LE) (years)":62.46,"LE Men":62.47,"LE women":62.45,"Fertility Rate Women":3.11,"GDP per capita":2200},
+        {"Country":"Botswana","Population (millions)":1.6,"0-14(%)":38.3,"15-64 (%)":57.9,">65 (%)":3.8,"Growth Rate (%)":-0.04,"Birth rate (per 1000)":23.1,"Death Rate (per 1000)":29.5,"Migration Rate (%)":6.07,"Infant mortality Rate (per 1000)":53.7,"Life Expectancy (LE) (years)":33.74,"LE Men":33.9,"LE women":33.56,"Fertility Rate Women":2.79,"GDP per capita":11400},
+        {"Country":"Brazil","Population (millions)":188.1,"0-14(%)":25.8,"15-64 (%)":68.1,">65 (%)":6.1,"Growth Rate (%)":1.04,"Birth rate (per 1000)":16.56,"Death Rate (per 1000)":6.17,"Migration Rate (%)":-0.03,"Infant mortality Rate (per 1000)":28.6,"Life Expectancy (LE) (years)":71.97,"LE Men":68.02,"LE women":76.12,"Fertility Rate Women":1.91,"GDP per capita":8600},
+        {"Country":"Chad","Population (millions)":9.9,"0-14(%)":47.9,"15-64 (%)":49.3,">65 (%)":2.8,"Growth Rate (%)":2.93,"Birth rate (per 1000)":45.73,"Death Rate (per 1000)":16.38,"Migration Rate (%)":-0.11,"Infant mortality Rate (per 1000)":91.45,"Life Expectancy (LE) (years)":47.52,"LE Men":45.88,"LE women":49.21,"Fertility Rate Women":6.25,"GDP per capita":1500},
+        {"Country":"China","Population (millions)":1314,"0-14(%)":20.8,"15-64 (%)":71.4,">65 (%)":7.8,"Growth Rate (%)":0.59,"Birth rate (per 1000)":13.25,"Death Rate (per 1000)":6.97,"Migration Rate (%)":-0.39,"Infant mortality Rate (per 1000)":23.12,"Life Expectancy (LE) (years)":75.28,"LE Men":70.89,"LE women":74.46,"Fertility Rate Women":1.73,"GDP per capita":7600},
+        {"Country":"Cuba","Population (millions)":11.3,"0-14(%)":19.1,"15-64 (%)":70.3,">65 (%)":10.6,"Growth Rate (%)":0.31,"Birth rate (per 1000)":11.89,"Death Rate (per 1000)":7.22,"Migration Rate (%)":-1.57,"Infant mortality Rate (per 1000)":6.22,"Life Expectancy (LE) (years)":77.41,"LE Men":75.11,"LE women":79.85,"Fertility Rate Women":1.66,"GDP per capita":3900},
+        {"Country":"Ethiopia","Population (millions)":74.7,"0-14(%)":43.7,"15-64 (%)":53.6,">65 (%)":2.7,"Growth Rate (%)":2.31,"Birth rate (per 1000)":37.98,"Death Rate (per 1000)":14.86,"Migration Rate (%)":0,"Infant mortality Rate (per 1000)":93.62,"Life Expectancy (LE) (years)":49.03,"LE Men":47.86,"LE women":50.24,"Fertility Rate Women":5.22,"GDP per capita":1000},
+        {"Country":"France","Population (millions)":62.7,"0-14(%)":18.3,"15-64 (%)":65.3,">65 (%)":16.4,"Growth Rate (%)":0.35,"Birth rate (per 1000)":11.99,"Death Rate (per 1000)":9.14,"Migration Rate (%)":0.66,"Infant mortality Rate (per 1000)":4.21,"Life Expectancy (LE) (years)":79.93,"LE Men":76.1,"LE women":83.54,"Fertility Rate Women":1.84,"GDP per capita":30100},
+        {"Country":"Germany","Population (millions)":82.4,"0-14(%)":14.1,"15-64 (%)":66.4,">65 (%)":19.5,"Growth Rate (%)":-0.02,"Birth rate (per 1000)":8.25,"Death Rate (per 1000)":10.62,"Migration Rate (%)":2.18,"Infant mortality Rate (per 1000)":4.12,"Life Expectancy (LE) (years)":78.8,"LE Men":75.81,"LE women":81.96,"Fertility Rate Women":1.39,"GDP per capita":31400},
+        {"Country":"Ghana","Population (millions)":22.4,"0-14(%)":38.8,"15-64 (%)":57.7,">65 (%)":3.5,"Growth Rate (%)":2.07,"Birth rate (per 1000)":30.52,"Death Rate (per 1000)":9.72,"Migration Rate (%)":-0.11,"Infant mortality Rate (per 1000)":55.02,"Life Expectancy (LE) (years)":58.87,"LE Men":58.07,"LE women":59.69,"Fertility Rate Women":3.99,"GDP per capita":2600},
+        {"Country":"Hungary","Population (millions)":18,"0-14(%)":15.6,"15-64 (%)":62.2,">65 (%)":22.2,"Growth Rate (%)":-0.25,"Birth rate (per 1000)":9.72,"Death Rate (per 1000)":13.11,"Migration Rate (%)":0.86,"Infant mortality Rate (per 1000)":8.39,"Life Expectancy (LE) (years)":72.66,"LE Men":68.45,"LE women":77.14,"Fertility Rate Women":1.32,"GDP per capita":17300},
+        {"Country":"India","Population (millions)":1095.4,"0-14(%)":30.8,"15-64 (%)":64.3,">65 (%)":4.9,"Growth Rate (%)":1.38,"Birth rate (per 1000)":22.01,"Death Rate (per 1000)":8.18,"Migration Rate (%)":-0.07,"Infant mortality Rate (per 1000)":54.63,"Life Expectancy (LE) (years)":64.71,"LE Men":63.9,"LE women":65.57,"Fertility Rate Women":2.73,"GDP per capita":3700},
+        {"Country":"Japan","Population (millions)":127.5,"0-14(%)":14.2,"15-64 (%)":65.7,">65 (%)":20.1,"Growth Rate (%)":2.02,"Birth rate (per 1000)":9.37,"Death Rate (per 1000)":9.16,"Migration Rate (%)":0,"Infant mortality Rate (per 1000)":3.24,"Life Expectancy (LE) (years)":81.25,"LE Men":77.96,"LE women":84.7,"Fertility Rate Women":1.4,"GDP per capita":33100},
+        {"Country":"Kenya","Population (millions)":34.7,"0-14(%)":42.6,"15-64 (%)":55.1,">65 (%)":2.3,"Growth Rate (%)":2.57,"Birth rate (per 1000)":39.72,"Death Rate (per 1000)":14.02,"Migration Rate (%)":0,"Infant mortality Rate (per 1000)":59.26,"Life Expectancy (LE) (years)":48.93,"LE Men":49.78,"LE women":48.07,"Fertility Rate Women":4.91,"GDP per capita":1200},
+        {"Country":"Malaysia","Population (millions)":24.4,"0-14(%)":32.6,"15-64 (%)":62.6,">65 (%)":4.8,"Growth Rate (%)":1.78,"Birth rate (per 1000)":22.86,"Death Rate (per 1000)":5.05,"Migration Rate (%)":0,"Infant mortality Rate (per 1000)":17.6,"Life Expectancy (LE) (years)":72.5,"LE Men":69.8,"LE women":75.38,"Fertility Rate Women":3.04,"GDP per capita":12700},
+        {"Country":"Pakistan","Population (millions)":165.8,"0-14(%)":39,"15-64 (%)":56.9,">65 (%)":4.1,"Growth Rate (%)":2.09,"Birth rate (per 1000)":29.74,"Death Rate (per 1000)":8.23,"Migration Rate (%)":-0.59,"Infant mortality Rate (per 1000)":70.45,"Life Expectancy (LE) (years)":63.39,"LE Men":62.4,"LE women":64.44,"Fertility Rate Women":4,"GDP per capita":2600},
+        {"Country":"Singapore","Population (millions)":4.5,"0-14(%)":15.6,"15-64 (%)":76.1,">65 (%)":8.3,"Growth Rate (%)":1.42,"Birth rate (per 1000)":9.34,"Death Rate (per 1000)":4.28,"Migration Rate (%)":9.12,"Infant mortality Rate (per 1000)":2.29,"Life Expectancy (LE) (years)":81.71,"LE Men":79.13,"LE women":84.49,"Fertility Rate Women":1.06,"GDP per capita":30900},
+        {"Country":"South Korea","Population (millions)":48.8,"0-14(%)":18.9,"15-64 (%)":71.9,">65 (%)":9.2,"Growth Rate (%)":0.42,"Birth rate (per 1000)":10,"Death Rate (per 1000)":5.85,"Migration Rate (%)":0,"Infant mortality Rate (per 1000)":6.16,"Life Expectancy (LE) (years)":77.04,"LE Men":73.61,"LE women":80.75,"Fertility Rate Women":1.27,"GDP per capita":24200},
+        {"Country":"UK","Population (millions)":60.6,"0-14(%)":17.5,"15-64 (%)":66.8,">65 (%)":15.7,"Growth Rate (%)":0.28,"Birth rate (per 1000)":10.71,"Death Rate (per 1000)":10.13,"Migration Rate (%)":2.18,"Infant mortality Rate (per 1000)":5.08,"Life Expectancy (LE) (years)":78.54,"LE Men":76.09,"LE women":81.13,"Fertility Rate Women":1.66,"GDP per capita":31400},
+        {"Country":"USA","Population (millions)":298,"0-14(%)":20.4,"15-64 (%)":67.2,">65 (%)":12.4,"Growth Rate (%)":0.91,"Birth rate (per 1000)":14.14,"Death Rate (per 1000)":8.26,"Migration Rate (%)":3.18,"Infant mortality Rate (per 1000)":6.43,"Life Expectancy (LE) (years)":77.85,"LE Men":75.02,"LE women":80.82,"Fertility Rate Women":2.09,"GDP per capita":43500}
+      ];
+
+      var country_data;
+      d3.json("./homework-data.json", function(error, json) {
+        if (error) return console.warn(error);
+        country_data = json;
+
+        // Set margins
+        var margin = {
+          'top': 50,
+          'right': 50,
+          'bottom': 100,
+          'left': 75
+        };
+
+        // Set canvas size
+        var svg_height = 400, svg_width = 1000;
+        var height = svg_height - (margin.top + margin.bottom),
+            width = svg_width - (margin.left + margin.right);
+
+        // Place svg and g
+        var svg = d3.select("#chart-1")
+          .append('svg')
+          .attr('height', svg_height)
+          .attr('width', svg_width);
+
+        var chart = svg.append("g")
+          .attr('transform', "translate(" + margin.left + ", " + margin.top + ")");
+
+        var bar_labels = chart.append('g');
+
+        // Scales
+        var countries = country_data.map( function(d){ return d['Country']; });
+        var x_scale = d3.scale.ordinal().domain(countries).rangeBands([0, width], 0.5, 0.25);
+
+        var max_y = d3.max(country_data, function(d){
+          return d['GDP per capita'];
+        });
+        var y_scale = d3.scale.linear().domain([0, max_y*1.1]).range([height, 0]);
+
+        // Axes
+        var x_axis = d3.svg.axis()
+          .scale(x_scale)
+          .orient('bottom');
+        var y_axis = d3.svg.axis()
+          .scale(y_scale)
+          .orient('left');
+
+        chart.append('g')
+          .attr('class', 'axis')
+          .call(x_axis)
+          .attr('transform', 'translate(0, ' + height + ')');
+        chart.append('g')
+          .attr('class', 'axis')
+          .call(y_axis);
+
+        var y_text = svg.append('text')
+          .attr('x', 10)
+          .attr('y', (svg_height-margin.bottom-margin.top)/2+margin.top)
+          .attr('text-anchor', 'middle')
+          .attr('id', 'yaxis_label')
+          .attr('class', 'label')
+          .attr('transform','rotate(-90 10 ' + ((svg_height-margin.bottom-margin.top)/2+margin.top) + ')')
+          .text('GDP per capita');
+
+        // Colour scaling
+        var color = d3.scale.linear()
+          .domain([0, max_y])
+          .range(["#ece2f0", "#1c9099"]);
+
+        function update(data) {
+          // Take the newest country order, create the scale with it
+          var countries = data.map( function(d){ return d['Country']; });
+          x_scale.domain(countries);
+          chart.select('.axis').transition().call(x_axis)
+          .selectAll('text')
+            .attr('transform', 'rotate(-30)')
+            .style('text-anchor', 'end');;
+
+          var rectangles = chart.selectAll('rect')
+            .data(data, function(d){return d['Country']})
+
+          rectangles.enter()
+            .append('rect')
+            .attr('x', function(d){
+              return x_scale(d['Country']);
+            })
+            .attr('y', function(d){
+              return y_scale(d['GDP per capita']);
+            })
+            .attr('width', x_scale.rangeBand())
+            .attr('height', 0)
+            .on('mouseover', function(d){
+              d3.select(this).style('fill', 'purple');
+            })
+            .on('mouseout', function(d){
+              d3.select(this).style('fill', color(d['GDP per capita']));
+            });
+
+          rectangles
+            .transition()
+            .attr('height', function(d){
+              return (height - y_scale(d['GDP per capita']))-1;
+            })
+            .attr('x', function(d){
+              return x_scale(d['Country']);
+            })
+            .attr('y', function(d){
+              return y_scale(d['GDP per capita']);
+            })
+            .attr('fill', function(d){
+              return color(d['GDP per capita'])
+            });
+
+          // Floating GDP label
+          var float_text = bar_labels.selectAll('text')
+            .data(data, function(d,i){ 
+              return d['Country'] });
+
+          float_text.enter()
+            .append('text')
+            .text( function(d){
+              var number =  d['GDP per capita'];
+              return d3.format(',')(number);
+            })
+            .attr('y', function(d){
+              return y_scale(d['GDP per capita'])-5;
+            })
+            .attr('text-anchor','middle')
+            .attr('class','float-label');
+
+          float_text
+            .transition()
+            .attr('x', function(d){
+              return x_scale(d['Country'])+10;
+            })
+            
+        }
+
+        update(country_data);
+
+        svg.append('text')
+          .attr('x', margin.left*1.5)
+          .attr('y', margin.top*1.5)
+          .style('text-decoration', 'underline')
+          .style('background-color', 'grey')
+          .text("Shuffle")
+          .attr('fill','#34282C')
+          .on('click', function(d){
+            d3.shuffle(country_data);
+            update(country_data);
+          });
+      })
+
+      // -----------------------------------------------------------------
+      // # 2
+      // Set margins
+      var margin = {
+        'top': 50,
+        'right': 50,
+        'bottom': 50,
+        'left': 50
+      };
+
+      // Set canvas size
+      var svg_height = 400, svg_width = 700;
+      var height = svg_height - (margin.top + margin.bottom),
+          width = svg_width - (margin.left + margin.right);
+
+      var svg_2 = d3.select("#chart-2")
+        .append('svg')
+        .attr('height', svg_height)
+        .attr('width', svg_width);
+
+      var scatterplot = svg_2.append("g")
+      .attr('transform', "translate(" + margin.left + ", " + margin.top + ")");
+
+      // Select data
+      var x_attribute = 'GDP per capita';
+      
+      //  Start with birth rate vs GDP
+      var birth = true;
+      var y_choice = ['Birth rate (per 1000)', 'Life Expectancy (LE) (years)'];
+      var y_attribute = y_choice[0];
+
+      // Scaling
+      var x_max = d3.max(country_data_raw, function(d){ return d[x_attribute]; });
+      var y_max = d3.max(country_data_raw, function(d){ return d[y_attribute]; });
+      var x_scale2 = d3.scale.linear().domain([0, x_max*1.1]).range([0, width]);
+      var y_scale2 = d3.scale.linear().domain([0, y_max*1.1]).range([height, 0]);
+
+      // Axes
+      var x_axis2 = d3.svg.axis()
+        .scale(x_scale2)
+        .orient('bottom');
+      var y_axis2 = d3.svg.axis()
+        .scale(y_scale2)
+        .orient('left');
+
+      scatterplot.append('g')
+        .attr('class', 'axis')
+        .attr('id', 'xaxis')
+        .call(x_axis2)
+        .attr('transform','translate(0, ' + height + ')');
+      scatterplot.append('g')
+        .attr('class', 'axis')
+        .attr('id', 'yaxis')
+        .call(y_axis2);
+
+      // Axes labels
+      var x_text2 = svg_2.append('text')
+        .text(x_attribute)
+        .attr('x', svg_width/2)
+        .attr('y', svg_height-10)
+        .attr('text-anchor','middle')
+        .attr('class', 'label');
+
+      function update2(data, x_attr, y_attr){
+        // Retrieve new maximums
+        x_max = d3.max(data, function(d){ return d[x_attr]; });
+        y_max = d3.max(data, function(d){ return d[y_attr]; });
+
+        // Define new scale
+        x_scale2.domain([0, x_max*1.1]);
+        y_scale2.domain([0, y_max*1.05]);
+
+        // Update axes
+        scatterplot.select('#xaxis').call(x_axis2);
+        scatterplot.select('#yaxis').transition().call(y_axis2);
+
+        // Define circles
+        var circles = scatterplot.selectAll('circle')
+          .data(data);
+        
+        svg_2.select('#yaxis2_label').remove();
+
+        var y_text2 = svg_2.append('text')
+          .attr('x', 10)
+          .attr('y', svg_height/2)
+          .attr('text-anchor','middle')
+          .attr('id','yaxis2_label')
+          .attr('class', 'label')
+          .attr('transform','rotate(-90 10 ' + svg_height/2 + ')');
+
+        // Create circles
+        circles.enter()
+          .append('circle')
+          .attr('cx', function(d){
+            return x_scale2(d[x_attr]);
+          })
+          .attr('cy', 0)
+          .attr('r', 5)
+          .attr('fill', 'purple')
+          .on('mouseover', function(d){
+            d3.select(this).transition().style('fill','red');
+            d3.select('#country-name').text(d['Country']);
+            d3.select('#population').text(d['Population (millions)']);
+              d3.select('#p0-14').text(d['0-14(%)']);
+              d3.select('#p15-64').text(d['15-64 (%)']);
+              d3.select('#p65').text(d['>65 (%)']);
+            d3.select('#growth-rate').text(d['Growth Rate (%)']);
+            d3.select('#death-rate').text(d['Death Rate (per 1000)']);
+            d3.select('#migration-rate').text(d['Migration Rate (%)']);
+            d3.select('#infant-m').text(d['Infant mortality Rate (per 1000)']);
+            d3.select('#le').text(d['Life Expectancy (LE) (years)']);
+            d3.select('#le-men').text(d['LE Men']);
+            d3.select('#le-women').text(d['LE women']);
+            d3.select('#fertility').text(d['Fertility Rate Women']);
+            d3.select('#GDP').text(d['GDP per capita']);
+            d3.select('#birth-rate').text(d['Birth rate (per 1000)']);
+            d3.select('#infobox-2').style('visibility','visible');
+          })
+          .on('mouseout', function(d){
+            d3.select(this).transition().style('fill','purple');
+            d3.select('#infobox-2').style('visibility','hidden');
+          });
+
+        // Update circles
+        circles
+          .transition()
+          .attr('cy', function(d){
+            return y_scale2(d[y_attr]);
+          });
+
+        y_text2.text(y_attr);
+      }
+
+      update2(country_data_raw, x_attribute, y_attribute);
+
+      button = d3.select('#button-loc')
+        .append('input')
+        .attr('name', 'updateButton')
+        .attr('id', 'button')
+        .attr('type', 'button')
+        .attr('value', function(d){
+          return "Show ''"+ x_attribute + " vs " + y_choice[1] + "''";
+        })
+        .style('margin','auto');
+
+      button
+        .on('click', function(d){
+          d3.select('#button').attr('value', "Show ''"+ x_attribute + " vs " + y_attribute + "''");
+          if (birth) {
+            y_attribute = y_choice[1];
+            birth = false;
+          } else {
+            y_attribute = y_choice[0];
+            birth = true;
+          }
+          update2(country_data_raw, x_attribute, y_attribute);
+        });
+
+      button2 = d3.select('#button-loc')
+        .append('input')
+        .attr('name', 'updateButton')
+        .attr('id', 'button')
+        .attr('type', 'button')
+        .attr('value', function(d){
+          return "Show ''"+ x_attribute + " vs Infant mortality Rate (per 1000)'";
+        })
+        .style('margin','auto');
+      button2
+        .on('click', function(d){
+          y_attribute = 'Infant mortality Rate (per 1000)';
+          update2(country_data_raw, x_attribute, y_attribute);
+        })
+
+    </script>
+  </body>
+</html>
