@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>Woojin Kim: Class 8 Homework</title>
+  <style>
+    /* Main components */
+      body {
+        font-family: 'Open Sans', 'Helvetica', sans-serif;
+        /*letter-spacing: -1px;*/
+      }
+
+      svg {
+        display: block;
+        margin: auto;
+      }
+
+      h1 {
+        text-align: center;
+        font-weight: normal;
+        margin: 25px auto 5px auto;
+      }
+
+      h2 {
+        background-color: #d3d3d3;
+        color: #fff;
+        width: 70%;
+        min-width: ;
+        padding: 10px 20px 10px 20px;
+        margin: 20px auto 20px auto;
+      }
+
+      h3 {
+        margin: 15px auto 7px auto;
+        text-align: center;
+      }
+
+      /* divs */
+      div.main {
+        margin: auto;
+        max-width: 1300px;
+      }
+
+      div.subtitle {
+          text-align: center;
+      }
+
+      div.footer {
+        clear: both;
+        margin-top: 50px;
+        position: relative;
+        bottom: 25px;
+        right: 25px;
+        text-align: right;
+        font-size: 80%;
+        color: grey;
+      }
+
+      p.infobox {
+        visibility: hidden;
+        text-align: center;
+        height: 12px;
+        }
+      p.description {
+        font-size: 80%;
+        max-width: 900px;
+        margin: 10px auto 10px auto;
+      }
+      p.sidenote {
+        font-size: 70%;
+        color: grey;
+        max-width: 900px;
+        margin: 5px auto 0px auto;
+      }
+
+      div.source {
+        clear: both;
+        padding-top: 20px;
+      }
+
+      div.chart {
+        display: inline-block;
+      }
+
+      div.sub {
+        text-indent: 10px;
+      }
+
+      div#button-loc {
+        text-align: center;
+      }
+
+      /* Misc */
+      .label {
+        font-family: sans-serif;
+      font-size: 80%;
+      fill: #505050;
+      }
+
+      .title {
+        font-weight: bold;
+      }
+
+      .axis text {
+        font-family: sans-serif;
+        font-size: 11px;
+        fill: #505050;
+      }
+
+      .axis path, line {
+        fill: none;
+        stroke: grey;
+        shape-rendering: crispEdges;
+      }
+
+      .float-label {
+        font-size: 70%;
+        fill: #7F7F7F;
+      }
+
+      hr {
+        border: 0;
+        height: 0;
+        border-top: 1px solid #e0e0e0;
+        margin-top: 20px;
+        width: 70%;
+      }
+    </style>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>  
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,300' rel='stylesheet' type='text/css'>
+</head>
+<body>
+  <h1>Woojin Kim (wk2246)</h1>
+    <div class="subtitle">Homework for Class 8</div>
+    <hr />
+    <div class="main">
+      <h3>Ranking points of top ATP players at the end of 2013</h3>
+      <p class="description">ATP ranking points of five selected players from 2004 to 2013 are shown below. Roger Federer's dominance 
+        until mid-2008 is clearly shown. There was a major adjustment in points given per tournamnent in 2009, which
+        is shown as a large jump in the graph for all the players. The difference in scale after the adjustment makes it difficult to 
+        compare players of different eras using just ranking points. Also notable is the incredible slope shown by Novak Djokovic's 2011 
+        season, widely regarded as one of the finest tennis seasons in the history of tennis.</p>
+      <p class="description">Data provided by <a href="http://www.tennisabstract.com/cgi-bin/rankingHistory.cgi">Tennis Abstract</a>.</p>
+      <p class="sidenote">*There are many circles as a result of weekly release of ranking points, so the radius was made small.
+        but also harder to find and hover over. <br />How about an adventure to find ranking point circles?</p>
+      <p id="infobox" class="infobox"><span id="player"></span></p>
+      <div id="chart" class="chart"></div>
+    </div>
+
+<script>
+var svg_width = 1300;
+var svg_height = 550;
+var margin = 120;
+var height = svg_height - margin;
+var width = svg_width - margin * 2;
+
+var svg = d3.select("#chart").append("svg")
+  .attr("width", svg_width)
+  .attr("height", svg_height);
+
+// Grey background
+svg.append('rect')
+  .attr('width', width)
+  .attr('height', height)
+  .attr('transform', 'translate(' + margin + ',' + 0 + ')')
+    .style('fill','#f0f0f0');
+
+// Charting area
+var chart = svg.append('g')
+  .attr('transform', 'translate(' + margin + ',' + 0 + ')');
+
+// Scales
+var xscale = d3.time.scale().range([0,width]);
+var yscale = d3.scale.linear().range([height, 0]);
+var color_scale = d3.scale.category10();
+
+// Axes
+var yAxis = d3.svg.axis().scale(yscale).orient("left");
+var xAxis = d3.svg.axis().scale(xscale).orient("bottom").ticks(11);
+
+y_text_x = margin-60
+var y_text = svg.append('text')
+  .attr('x', y_text_x)
+  .attr('y', (height/2))
+  .attr('text-anchor', 'middle')
+  .attr('id', 'yaxis_label')
+  .attr('class', 'label')
+  .attr('transform','rotate(-90 ' + y_text_x + ' ' + (height/2) + ')')
+  .text('ATP Ranking Points');
+
+// Time Format
+var format = d3.time.format("%Y/%m/%d").parse;
+
+// How to convert series of data point into a line
+var line = d3.svg.line()
+  //.interpolate('cardinal')
+  .x(function(d){ return xscale(d['Date']); })
+  .y(function(d){ return yscale(d['Ranking Points']); });
+
+// Move element to front. Source: https://gist.github.com/trtg/3922684
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+  this.parentNode.appendChild(this);
+  });
+};
+
+d3.csv("08-ranking_points.csv", function(error, data) {
+  data.forEach(function(d){
+    d['Date_informal'] = d['Date'];
+    d['Date'] = format(d['Date']);
+  })
+  
+  // max_rp = d3.max(data, function(d) { console.log(d.Player);
+  //   console.log(d['Ranking Points'])
+  //   return d['Ranking Points']; })
+  // console.log(max_rp)
+  max_rp = 15390;
+
+  // Provide domain using the data
+  xscale.domain(d3.extent(data, function(d){ return d['Date']; }));
+  yscale.domain([0, max_rp]);
+
+  // Group players
+  group = d3.nest()
+    .key(function(d){ return d['Player']; })
+    .entries(data)
+
+  // Lines
+  var lines_area = chart.append('g');
+  lines_area.selectAll('path')
+    .data(group)
+    .enter()
+    .append('path')
+    .attr("d", function(d){
+      return line(d.values)
+    })
+    .style('fill', 'none')
+    .style('stroke', 'lightgrey')
+    .style('opacity',.6)
+    .attr("stroke-width", 2)
+    .on('mouseover', function(d){
+      d3.select(this).style('stroke', function(d){ return color_scale(d.key); });
+      d3.select(this).style('stroke-width', 7);
+      d3.select('#infobox').style('visibility','visible');
+      d3.select('#player').text(d.key);
+      d3.select(this).moveToFront();
+    })
+    .on('mouseout', function(d){
+      d3.select(this).style('stroke', 'lightgrey');
+      d3.select(this).transition().style("stroke-width", 2);
+      d3.select('#infobox').style('visibility','hidden');
+    });
+
+  // Circles
+  var circles = chart.selectAll('circle')
+    .data(data)
+    .enter()
+    .append('circle')
+    .attr('r', 1)
+    .style('opacity',.5)
+    .attr('cx', function(d){
+      return xscale(d['Date']);
+    })
+    .attr('cy', function(d){
+      return yscale(d['Ranking Points']);
+    })
+    .style('fill', 'lightgrey')
+    .on('mouseover', function(d){
+      d3.select(this).style('fill', function(d){ return color_scale(d.Player) })
+      d3.select(this).attr('r', 7)
+      d3.select('#infobox').style('visibility','visible')
+      d3.select('#player').text(d['Player'] + ' (' + d['Date_informal'] + ': ' + d['Ranking Points'] + ' points)');
+      d3.select(this).moveToFront();
+    })
+    .on('mouseout', function(d){
+      d3.select(this).style('fill', 'lightgrey')
+      d3.select(this).transition().attr('r', 1)
+      d3.select('#infobox').style('visibility','hidden');
+    });
+
+    // Place axes
+    chart.append("g")
+        .attr("class", "y-axis axis")
+        .call(yAxis);
+    chart.append("g")
+        .attr("class", "x-axis axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+    // Provide player names on the right margin
+    var label_area = chart.append('g');
+    label_area.selectAll('text')
+      .data(group)
+      .enter()
+      .append('text')
+      .attr('class','label')
+      .attr('x',width+10)
+      .attr('y',function(d){
+        return yscale(d.values[2]['Ranking Points'])+4;
+      })
+      .text(function(d){
+        return d.key;
+      })
+
+    // Legend
+    var legend = chart.append('g')
+      .attr('class', 'legend');
+    legend.attr('transform','translate(140,'+(height+50)+')');
+
+        legend_items = legend.selectAll('g')
+          .data(group)
+          .enter()
+          .append('g');
+
+        legend_items.attr('transform', function(d,i){
+          return 'translate(' + (i*150) + ',0)';
+        })
+        // Provide text
+        legend_items.append('text')
+          .text( function(d) {
+            return d.key;
+          })
+          .attr('x',15)
+          .attr('y', 10)
+          .attr('class','label');
+        // Provide colour
+        legend_items.append("rect")
+          .attr('x', 0)
+          .attr('y', 0)
+          .attr('height', 12)
+          .attr('width', 12)
+          .style('fill', function(d) {
+            return color_scale(d['key']);
+          })
+  })
+</script>
+</body>
+</html>

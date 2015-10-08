@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Class 9 Homework</title>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>
+<style>
+    /* Main components */
+      body {
+        font-family: 'Open Sans', 'Helvetica', sans-serif;
+        /*letter-spacing: -1px;*/
+      }
+
+      svg {
+        display: block;
+        margin: auto;
+      }
+
+      h1 {
+        text-align: center;
+        font-weight: normal;
+        margin: 25px auto 5px auto;
+      }
+
+      h2 {
+        background-color: #d3d3d3;
+        color: #fff;
+        width: 70%;
+        min-width: ;
+        padding: 10px 20px 10px 20px;
+        margin: 20px auto 20px auto;
+      }
+
+      h3 {
+        margin: 15px auto 7px auto;
+        text-align: center;
+      }
+
+      /* divs */
+      div.main {
+        margin: auto;
+        max-width: 1300px;
+      }
+
+      div.subtitle {
+          text-align: center;
+      }
+
+      div.footer {
+        clear: both;
+        margin-top: 50px;
+        position: relative;
+        bottom: 25px;
+        right: 25px;
+        text-align: right;
+        font-size: 80%;
+        color: grey;
+      }
+
+      p.infobox {
+        visibility: hidden;
+        text-align: center;
+        height: 12px;
+        }
+      p.description {
+        font-size: 80%;
+        max-width: 900px;
+        margin: 10px auto 10px auto;
+      }
+      p.sidenote {
+        font-size: 70%;
+        color: grey;
+        max-width: 900px;
+        margin: 5px auto 0px auto;
+      }
+
+      div.source {
+        clear: both;
+        padding-top: 20px;
+      }
+
+      div.chart {
+        display: inline-block;
+      }
+
+      div.tooltip {
+        position: absolute;
+        visibility: hidden;
+        font-size: 75%;
+        color: #333333;
+        background-color: #e6e6e6;
+        opacity: .95;
+        padding: 5px;
+      }
+
+      div#map {
+        margin: 10px auto 10px auto;
+      }
+
+      /* Misc */
+      .label {
+        font-family: sans-serif;
+      font-size: 80%;
+      fill: #505050;
+      }
+
+      .title {
+        font-weight: bold;
+      }
+
+      .axis text {
+        font-family: sans-serif;
+        font-size: 11px;
+        fill: #505050;
+      }
+
+      .axis path, line {
+        fill: none;
+        stroke: grey;
+        shape-rendering: crispEdges;
+      }
+
+      .float-label {
+        font-size: 70%;
+        fill: #7F7F7F;
+      }
+
+      hr {
+        border: 0;
+        height: 0;
+        border-top: 1px solid #e0e0e0;
+        margin-top: 20px;
+        width: 70%;
+      }
+    </style>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>  
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,300' rel='stylesheet' type='text/css'>
+</head>
+<body>
+  <h1>Woojin Kim (wk2246)</h1>
+    <div class="subtitle">Homework for Class 9</div>
+    <hr />
+    <div class="main">
+        <p class="description"><strong>World Map.</strong> The most populated cities are concentrated in East Asia, India,
+            and Western Europe. In comparison to the rest of the world, the northern parts of South America and Africa
+            are very sparsely populated. <em>Hover around to see the population of a city.</em></p>
+        <div id="map"></div>
+        <div class="tooltip"></div>
+    </div>
+  <script>
+    // Move element to front. Source: https://gist.github.com/trtg/3922684
+    d3.selection.prototype.moveToFront = function() {
+      return this.each(function(){
+      this.parentNode.appendChild(this);
+      });
+    };
+
+    format = d3.format(',')
+
+    d3.csv("population.csv", function(error, data) {
+        data.forEach( function(d){
+            d['Longitude']  = parseFloat(d['Longitude']);
+            d['Latitude']   = parseFloat(d['Latitude']);
+            d['Population'] = parseFloat(d['Population']);
+        } )
+
+        var height = 550, width = 1200;
+        var svg = d3.select('#map').append('svg').attr('height', height).attr('width', width);
+
+        // Mercator scale
+        var projection = d3.geo.mercator().scale(200).center([0,0])//.center([-101.95,39.87])
+        	.translate([width/2, height/2]);
+        // var projection = d3.geo.albersUsa()
+            // .scale(300)
+            // .center([-101.95,39.87])
+
+        // Scaling
+        var xscale = d3.scale.linear().domain([-140.484377, -62.789065]).range([0, width]); //lng
+        var yscale = d3.scale.linear().domain([21.763581, 51.933428]).range([height, 0]); //lat
+
+
+        // Country scale
+        var country_scale = d3.scale.category20();
+
+        // Population scale
+        var pop_max = d3.
+        max(data, function(d){
+            return d['Population'];
+        })
+        var pop_scale = d3.scale.linear().domain([0, pop_max]).range([1,70]);
+        var pop_scale_mouseover = d3.scale.linear().domain([0, pop_max]).range([1,110]);
+
+        // ZIP scale
+        var zip_scale = d3.scale.linear().domain([00000,50000,99999]).range(['blue','yellow','red']);
+
+        // Chart
+        var chart = svg.append('g');
+        chart.selectAll('circle')
+        	.data(data)
+        	.enter()
+        	.append('circle')
+        	.attr('r', function(d){
+                return pop_scale(d['Population']);
+            })
+        	.attr('cx', function(d){
+        		return projection([d['Longitude'],d['Latitude']])[0]
+        	})
+        	.attr('cy', function(d){
+        		return projection([d['Longitude'],d['Latitude']])[1]
+        	})
+        	.style('fill', function(d){
+        	   return country_scale(d['Country']);
+        	})
+            .style('opacity', 0.6)
+            .on('mouseover', function(d) {
+                position = d3.mouse(this)
+                d3.select(this).style('opacity',.9);
+                d3.select(this).transition().attr('r', function(d){
+                    return pop_scale_mouseover(d['Population']);
+                })
+                d3.select(this).moveToFront();
+                d3.select('.tooltip')
+                    .style('visibility','visible')
+                    .style('top', d3.event.pageY+10 + 'px')
+                    .style('left', d3.event.pageX+10 + 'px')
+                    .html('<strong>'+d['AccentCity']+'</strong><br />Population: '+format(d['Population']))
+            })
+            .on('mouseout', function(d) {
+                d3.select(this).style('opacity',.6);
+                d3.select(this).transition().attr('r', function(d){
+                    return pop_scale(d['Population']);
+                })
+                d3.select('.tooltip')
+                    .style('visibility', 'hidden')
+            })
+    });
+  </script>
+</body>
+</html>
