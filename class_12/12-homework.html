@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Woojin Kim - Class 12 Homework</title>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>  
+  <style>
+    /* Main components */
+    body {
+      font-family: 'Open Sans', 'Helvetica', sans-serif;
+      /*letter-spacing: -1px;*/
+    }
+
+    svg {
+      display: block;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: normal;
+      margin: 25px auto 5px auto;
+    }
+
+    h2 {
+      background-color: #d3d3d3;
+      color: #fff;
+      width: 70%;
+      min-width: ;
+      padding: 10px 20px 10px 20px;
+      margin: 20px auto 20px auto;
+    }
+
+    h3 {
+      margin: 15px auto 7px auto;
+      text-align: center;
+    }
+
+    /* divs */
+    div.main {
+      margin: auto;
+      max-width: 1000px;
+    }
+
+    div.subtitle {
+        text-align: center;
+    }
+
+    div.footer {
+      clear: both;
+      margin-top: 50px;
+      position: relative;
+      bottom: 25px;
+      right: 25px;
+      text-align: right;
+      font-size: 80%;
+      color: grey;
+    }
+
+    p.infobox {
+      visibility: hidden;
+      text-align: center;
+      height: 12px;
+      }
+    p.description {
+      font-size: 80%;
+      margin: 10px auto 10px auto;
+    }
+    p.sidenote {
+      font-size: 70%;
+      color: grey;
+      max-width: 900px;
+      margin: 5px auto 0px auto;
+    }
+    p.source {
+      font-size: 70%;
+      width: 100%;
+      margin: 10px auto 10px auto;
+      text-align: right;
+    }
+
+    div.tooltip {
+      position: absolute;
+      visibility: hidden;
+      font-size: 75%;
+      color: #333333;
+      background-color: #e6e6e6;
+      opacity: .95;
+      padding: 5px;
+    }
+
+    div#map {
+      margin: 10px 50px 10px auto; display: inline-block;
+    }
+    div#graph {
+      display: inline-block;
+    }
+
+    /* Misc */
+    .label {
+      font-family: sans-serif;
+    font-size: 80%;
+    fill: #505050;
+    }
+
+    .title {
+      font-weight: bold;
+    }
+
+    .axis text {
+      font-family: sans-serif;
+      font-size: 11px;
+      fill: #505050;
+    }
+
+    .axis path, line {
+      fill: none;
+      stroke: grey;
+      shape-rendering: crispEdges;
+    }
+
+    .float-label {
+      font-size: 70%;
+      fill: #7F7F7F;
+    }
+
+    hr {
+      border: 0;
+      height: 0;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 20px;
+      width: 70%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Woojin Kim (wk2246)</h1>
+    <div class="subtitle">Homework for Class 12</div>
+    <hr />
+    <div class="main">
+        <p class="description"><strong>GDP of Canadian Provinces, 2009&ndash;2013</strong> How did the
+          economies of Canadian provinces evolve from 2009 to 2013? By July 2009, <a href="https://www.thestar.com/business/2009/07/23/bank_declares_recession_over.html" title="Bank declares recession over">
+          the Bank of Canada had declared the recesesion to be over</a> and Canada was on recovery
+          during the period shown on the graph. As expected, there is a huge discrepancy between the scales
+          of economies within Canada. <a href="#" class="show-Ontario">Ontario's GDP<a/> is higher than 
+          many (if not most) of the provinces combined and shows singularly important Ontario's economy is
+          to the rest of Canada. Another point of interest is <a href="#" class="show-Alberta">Alberta's 
+          massive growth</a> during this period. Alberta's economy is centered on the petroleum industry;
+          consequently, the rise is most likely the effect of 
+          <a href="http://www.macrotrends.net/1369/crude-oil-price-history-chart" title="Crude Oil Price History">
+            the rising oil prices that began in 2009</a>.</p>
+        <p class="source">
+          Source: <a href="http://www.statcan.gc.ca/tables-tableaux/sum-som/l01/cst01/econ15-eng.htm">Statistics Canada</a> (data)
+          , <a href="https://www.arcgis.com/home/item.html?id=dcbcdf86939548af81efbd2d732336db">ArcGIS</a> (map)
+        </p>
+        <div id="map"></div>
+        <div id="graph"></div>
+        <div class="tooltip"></div>
+    </div>
+  
+  <script>
+
+  // Move element to front
+  //  Source: https://gist.github.com/trtg/3922684
+  d3.selection.prototype.moveToFront = function() {
+    return this.each(function(){
+      this.parentNode.appendChild(this);
+    });
+  };
+
+  queue()
+    .defer(d3.json, "canada.json")
+    .defer(d3.csv, "provincial_GDP_melted.csv")
+    .await(function(error, provinces_json, GDP_data) {
+
+      // Ordinal colour scale
+      var color_scale = d3.scale.category10();
+      // Thousands separator for numbers
+      var format = d3.format(",");
+
+      // Pull the provinces out of the geojson
+      var provinces = provinces_json['features'];
+      
+      var height = 600, width = 500;    
+      
+      var map_svg = d3.select("#map")
+                    .append("svg")
+                    .attr('height', height)
+                    .attr('width', width);
+
+      /* Create g layers for each aspect of the map */
+      var map = map_svg.append("g");
+      var province_g = map.append("g");
+      var shootings_g = map.append("g");
+      
+      // Mercator map centered on Canada
+      // var projection = d3.geo.mercator()
+      //   .center([-100.3809, 65.2270])
+      //   .scale(350)
+      //   .translate([width / 2, height / 2]);
+      var projection = d3.geo.conicEqualArea()
+        .center([2, 55.2270])
+        .scale(600)
+        .rotate([96, 0])
+        .translate([width / 2, height / 2]);
+
+
+
+      var path = d3.geo.path().projection(projection);
+
+      // Map of Canada
+      province_g.selectAll("path")
+              .data(provinces)
+              .enter()
+              .append("path")
+              .attr('d', path)
+              .attr('class', function(d){
+                return "province-" + d['properties']['NAME']
+              })
+              .style('fill', '#e1e1e1')
+              .style('stroke', '#ffffff')
+              .on('mouseover', function(d){
+                d3.select(this).style('fill', function(d){
+                  return color_scale(d['properties']['NAME']); });
+                d3.selectAll(".province-line-" + d['properties']['NAME'])
+                  .style('stroke', function(d){
+                    return color_scale(d.key); })
+                  .style('stroke-width', 7)
+                  .moveToFront();
+                d3.select('.tooltip')
+                  .style('visibility','visible')
+                  .style('top', d3.event.pageY+10 + 'px')
+                  .style('left', d3.event.pageX+10 + 'px')
+                  .html('<strong>'+d['properties']['NAME']+'</strong>')
+                  .transition().style('opacity', .9);
+              })
+              .on('mouseout', function(d){
+                d3.select(this).style('fill', '#e1e1e1');
+                d3.selectAll(".province-line-" + d['properties']['NAME'])
+                  .style('stroke', 'lightgrey')
+                  .style('opacity',.6)
+                  .style("stroke-width", 2);
+                d3.select('.tooltip')
+                  .style('visibility','hidden')
+                  .transition().style('opacity', 0);
+              });
+
+      // ----------------------------------------
+      // GDP graph
+      var graph_margin = 50,
+          graph_width = 300,
+          graph_height = 600;
+
+      var graph_svg = d3.select("#graph")
+        .append("svg")
+        .attr('height', graph_height + graph_margin * 2)
+        .attr('width', graph_width + graph_margin * 2);
+
+      var graph = graph_svg.append('g').attr("transform", "translate(" + graph_margin*1.5 + "," + graph_margin + ")");
+      
+      // Group by province
+      var group = d3.nest()
+        .key(function(d) { 
+          return d['Province'];
+        })
+        .entries(GDP_data);
+  
+      // Scales
+      var max_gdp = 695705
+      var xscale = d3.scale.linear().domain([2009,2013]).range([0,graph_width]);
+      var yscale = d3.scale.linear().domain([0,700000]).range([graph_height, 0]);
+
+      // Building lines
+      //  x is be the key (the year)
+      //  y is be the value (GDP)
+      var line = d3.svg.line()
+        .x(function(d) { return xscale(d['year']); })
+        .y(function(d) { return yscale(d['GDP']); });
+
+      // Draw the axes
+      var yAxis = d3.svg.axis()
+        .scale(yscale)
+        .orient("left");
+      // use .tickFormat(d3.format('d')) to not have commas in years
+      var xAxis = d3.svg.axis()
+        .scale(xscale)
+        .orient("bottom")
+        .tickFormat(d3.format('d'));
+      
+      graph.append("g")
+          .attr("class", "y-axis axis")
+          .call(yAxis);
+      graph.append("g")
+          .attr("class", "x-axis axis")
+          .attr("transform", "translate(0," + graph_height + ")")
+          .call(xAxis);
+
+      // y-axis label
+      var y_text = graph_svg.append('text')
+        .attr('x', 10)
+        .attr('y', (graph_height/2))
+        .attr('text-anchor', 'middle')
+        .attr('id', 'yaxis_label')
+        .attr('class', 'label')
+        .attr('transform','rotate(-90 ' + 10 + ' ' + (graph_height/2) + ')')
+        .text('Provincial GDP (millions of dollars)');
+
+      // Putting it inside of its own g
+      var lines_area = graph.append('g');
+
+      // Draw lines for the GDP trends
+      lines_area.selectAll('path')
+        .data(group)
+        .enter()
+        .append('path')
+        .attr('class', function(d){
+          return "province-line-" + d['key']
+        })
+        .attr("d", function(d){
+          return line(d.values)
+        })
+        .style('fill', 'none')
+        .style('stroke', 'lightgrey')
+        .style('opacity',.6)
+        .style("stroke-width", 2)
+        .on('mouseover', function(d){
+          d3.select(this).style('stroke', function(d){
+            return color_scale(d.key); });
+          d3.select(this).style('stroke-width', 7);
+          d3.select(this).moveToFront();
+          d3.selectAll(".province-" + d.key)
+            .transition()
+            .style('fill', function(d){
+              return color_scale(d['properties']['NAME']);
+          })
+          d3.select('.tooltip')
+            .style('visibility','visible')
+            .style('top', d3.event.pageY+10 + 'px')
+            .style('left', d3.event.pageX+10 + 'px')
+            .html('<strong>'+d['key']+'</strong>')
+            .transition().style('opacity', .9);
+        })
+        .on('mouseout', function(d){
+          d3.select(this).style('stroke', 'lightgrey');
+          d3.select(this).transition().style("stroke-width", 2);
+          d3.selectAll(".province-" + d.key)
+            .transition()
+            .style('fill', '#e1e1e1')
+          d3.select('.tooltip')
+            .style('visibility','hidden')
+            .transition().style('opacity', 0);
+        });
+
+      // Draw individual data points
+      var circles_area = graph.append('g');
+      circles_area.selectAll('circle')
+        .data(GDP_data)
+        .enter()
+        .append('circle')
+        .attr('r', 3.5)
+
+        .style('opacity',.5)
+        .style('fill', 'lightgrey')
+        .attr('cx', function(d) {
+          return xscale(d['year']);
+        })
+        .attr('cy', function(d) {
+          return yscale(d['GDP']);
+        })
+        .on("mouseover", function(d) {
+          // console.log(d);
+          d3.select(this).style('fill', function(d){
+            return color_scale(d['Province']);
+          });
+          d3.selectAll(".year-" + d['Province'])
+            .transition()
+            .style('fill', '#ff0000');
+          d3.selectAll(".province-" + d['Province'])
+            .transition()
+            .style('fill', function(d){
+              return color_scale(d['properties']['NAME']);
+            });
+          d3.select('.tooltip')
+            .style('visibility','visible')
+            .style('top', d3.event.pageY+10 + 'px')
+            .style('left', d3.event.pageX+10 + 'px')
+            .html('<strong>'+d['Province']+'</strong><br />GDP: $'
+            + format(d['GDP']) + " mil")
+            .transition().style('opacity', .9);;
+        })
+        .on("mouseout", function(d) {
+          d3.select(this).style('fill', 'lightgrey');
+          d3.selectAll(".province-" + d['Province'])
+            .transition()
+            .style('fill', '#e1e1e1');
+          d3.select('.tooltip')
+            .style('visibility','hidden')
+            .transition().style('opacity', 0);
+          })
+
+      // Highlight Ontario from text
+      d3.selectAll(".show-Ontario")
+        .on("mouseover", function(d) {
+            d3.selectAll(".province-Ontario")
+               .transition()
+               .style('fill', function(d){
+                  return color_scale(d['properties']['NAME']);
+               });
+            d3.selectAll(".province-line-Ontario")
+              .moveToFront()
+              .transition()
+              .style('stroke', function(d){
+                 return color_scale(d.key);
+              })
+              .style('stroke-width', 7);
+         })
+         .on("mouseout", function(d) {
+            d3.selectAll(".province-Ontario")
+              .transition()
+              .style('fill', '#e1e1e1');
+            d3.selectAll(".province-line-Ontario")
+              .transition()
+              .style('stroke', 'lightgrey')
+              .style('opacity',.6)
+              .style("stroke-width", 2);
+         });
+
+      // Highlight Alberta from text
+      d3.selectAll(".show-Alberta")
+      .on("mouseover", function(d) {
+          d3.selectAll(".province-Alberta")
+             .transition()
+             .style('fill', function(d){
+                return color_scale(d['properties']['NAME']);
+             });
+          d3.selectAll(".province-line-Alberta")
+            .moveToFront()
+            .transition()
+            .style('stroke', function(d){
+               return color_scale(d.key);
+            })
+            .style('stroke-width', 7);
+       })
+       .on("mouseout", function(d) {
+          d3.selectAll(".province-Alberta")
+            .transition()
+            .style('fill', '#e1e1e1');
+          d3.selectAll(".province-line-Alberta")
+            .transition()
+            .style('stroke', 'lightgrey')
+            .style('opacity',.6)
+            .style("stroke-width", 2);
+       });
+    });
+  </script>
+</body>
+</html>
