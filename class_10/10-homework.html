@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Woojin Kim - Class 10 Homework</title>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>  
+  <style>
+    /* Main components */
+    body {
+      font-family: 'Open Sans', 'Helvetica', sans-serif;
+      /*letter-spacing: -1px;*/
+    }
+
+    svg {
+      display: block;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: normal;
+      margin: 25px auto 5px auto;
+    }
+
+    h2 {
+      background-color: #d3d3d3;
+      color: #fff;
+      width: 70%;
+      min-width: ;
+      padding: 10px 20px 10px 20px;
+      margin: 20px auto 20px auto;
+    }
+
+    h3 {
+      margin: 15px auto 7px auto;
+      text-align: center;
+    }
+
+    /* divs */
+    div.main {
+      margin: auto;
+      max-width: 1000px;
+    }
+
+    div.subtitle {
+        text-align: center;
+    }
+
+    div.footer {
+      clear: both;
+      margin-top: 50px;
+      position: relative;
+      bottom: 25px;
+      right: 25px;
+      text-align: right;
+      font-size: 80%;
+      color: grey;
+    }
+
+    p.infobox {
+      visibility: hidden;
+      text-align: center;
+      height: 12px;
+      }
+    p.description {
+      font-size: 80%;
+      margin: 10px auto 10px auto;
+    }
+    p.sidenote {
+      font-size: 70%;
+      color: grey;
+      max-width: 900px;
+      margin: 5px auto 0px auto;
+    }
+    p.source {
+      font-size: 80%;
+      width: 100%;
+      margin: 20px auto 10px auto;
+      text-align: right;
+    }
+
+    div.tooltip {
+      position: absolute;
+      visibility: hidden;
+      font-size: 75%;
+      color: #333333;
+      background-color: #e6e6e6;
+      opacity: .95;
+      padding: 5px;
+    }
+
+    div#map {
+      margin: 10px auto 10px auto;
+    }
+
+    /* Misc */
+    .label {
+      font-family: sans-serif;
+    font-size: 80%;
+    fill: #505050;
+    }
+
+    .title {
+      font-weight: bold;
+    }
+
+    .axis text {
+      font-family: sans-serif;
+      font-size: 11px;
+      fill: #505050;
+    }
+
+    .axis path, line {
+      fill: none;
+      stroke: grey;
+      shape-rendering: crispEdges;
+    }
+
+    .float-label {
+      font-size: 70%;
+      fill: #7F7F7F;
+    }
+
+    hr {
+      border: 0;
+      height: 0;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 20px;
+      width: 70%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Woojin Kim (wk2246)</h1>
+    <div class="subtitle">Homework for Class 10</div>
+    <hr />
+    <div class="main">
+        <p class="description"><strong>Where are the Koreans at?</strong> You encounter Koreans everywhere in New York City,
+          but where do they actually reside? Turns out (and perhaps unsurprisingly,) Koreans are most concentrated in Koreatown
+          area in Midtown Manhattan and Flushing, Queens, with small pockets also in Staten Island and along the 7 train
+          in Sunnyside, Hunters Point, and Woodside. <em>Hover over thea areas to see the number of Koreans and the percentage of
+          the population. Note: This map was divided using percentage of Koreans in the area.</em></p>
+        <div id="map"></div>
+        <div class="tooltip"></div>
+        <p class="source">Source: <a href="https://www.census.gov/geo/maps-data/data/tiger-data.html">2010 United States Census</a></p>
+    </div>
+    <hr />
+    <div class="main">
+        <p class="description"><strong>How old is your neighbourhood?</strong> Darker areas in the map correspond to areas with
+          high median age in New York. A quick glance reveals higher median age Riverdale, Bronx; far east side of Queens; Coney Island;
+          and Upper East Side. Also notable is how low the median age is for the Columbia University areas within Morningside Heights, particularly
+          21.1 for the main campus. <em>Hover over the areas to see the median age of the area.</em></p>
+        <div id="map2"></div>
+        <div class="tooltip"></div>
+        <p class="source">Source: <a href="https://www.census.gov/geo/maps-data/data/tiger-data.html">2010 United States Census</a></p>
+    </div>
+  <script>
+    format = d3.format(',')
+
+    d3.json("table_2010_census_data.geojson", function(error, data) {
+      var tracts = data['features'];
+
+      tracts.forEach( function(d){
+        d['Population'] = d['properties']['dp0010001'];
+        d['Median Age'] = d['properties']['dp0020001'];
+
+        // Korean population
+        if (d['properties']['dp0010001'] > 0) {
+          d['Percent_Korean'] = (d['properties']['dp0080011'])/(d['properties']['dp0010001']);
+        }
+        else {
+          d['Percent_Korean'] = 0;
+        }
+      })
+
+      // Build our chart space
+      var svg_height = 700, svg_width = 1000;
+      var margins = 0;
+      var height = svg_height - margins * 2;
+      var width = svg_width - margins * 2;
+
+      var svg = d3.select("#map")
+        .append("svg")
+        .attr('height', svg_height)
+        .attr('width', svg_width);
+
+      var map = svg.append("g").attr("transform", "translate(" + margins + "," + margins + ")");
+
+      // Find range of Koreans
+      var max_dp0080011 = d3.max(tracts, function(d){ return d['Percent_Korean']; })
+      // var all_dp0080011 = tracts.map( function(d) { return d['Percent_Korean']; })
+
+      // Binning in case of quantile use
+      // var num_bins = 10
+      // var color_interp = d3.scale.linear().domain([1,num_bins]).range(['beige', 'red']);
+      // var color_array = new Array(num_bins);
+      // for (i=1; i<=num_bins; i++) {
+      //   color_array[i] = color_interp(i);
+      // };
+
+      var color_scale = d3.scale.linear().domain([0, max_dp0080011]).range(['#e0ece4','#6e016b']);
+
+      var projection = d3.geo.mercator()
+        .translate([width / 2,height / 2])
+        .center([-73.9912, 40.7106])
+        .scale(70000);
+
+      var path = d3.geo.path().projection(projection);
+
+      // Draw the map
+      map.selectAll('path')
+        .data(tracts)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .style('fill', function(d) {
+          return color_scale(d['Percent_Korean'])
+        })
+        .style('stroke', '#a0a0a0')
+        .style('stroke-width', 0.5)
+        .style('opacity',0.75)
+        .on('mouseover', function(d) {
+          d3.select(this).transition().style('fill','#909090');
+          d3.select('.tooltip')
+          .style('visibility','visible')
+          .style('top', d3.event.pageY+10 + 'px')
+          .style('left', d3.event.pageX+10 + 'px')
+          .html('<strong>'+d['properties']['ntaname']+'</strong><br />Number of Koreans: '
+            +d['properties']['dp0080011'] + ' (' + d3.round(d['Percent_Korean']*100,1) + '%)')
+          .transition().style('opacity', .9);
+        })
+        .on('mouseout', function(d) {
+          d3.select(this).transition()
+          .style('fill', function(d) { 
+            return color_scale(d['Percent_Korean']) })
+          d3.select('.tooltip')
+          .style('visibility','hidden')
+          .transition().style('opacity', 0);
+      });
+      
+      // --------------------------------------------------------------------------------
+      // Map 2
+      var svg2 = d3.select("#map2")
+        .append("svg")
+        .attr('height', svg_height)
+        .attr('width', svg_width);
+
+      var map2 = svg2.append("g").attr("transform", "translate(" + margins + "," + margins + ")");
+
+      // Age ranges
+      var min_age = d3.min(tracts, function(d){
+        // Clean up minimum age for unoccupied areas
+        if (d['Median Age']>0){ return d['Median Age']; }
+        else { return Infinity; }
+      })
+      var median_age = d3.median(tracts, function(d){ return d['Median Age']; })
+      var max_age = d3.max(tracts, function(d){ return d['Median Age']; })
+
+      // Colour scale
+      var color_scale2 = d3.scale.linear().domain([min_age, max_age]).range(['#ffffff','#7f0000']);
+
+      // Draw the map
+      map2.selectAll('path')
+        .data(tracts)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .style('fill', function(d) {
+          return color_scale2(d['Median Age']);
+        })
+        .style('stroke', '#a0a0a0')
+        .style('stroke-width', 0.5)
+        .style('opacity',0.80)
+        .on('mouseover', function(d) {
+          d3.select(this).transition().style('fill','#404040');
+          d3.select('.tooltip')
+          .style('visibility','visible')
+          .style('top', d3.event.pageY+10 + 'px')
+          .style('left', d3.event.pageX+10 + 'px')
+          .html('<strong>'+d['properties']['ntaname']+'</strong><br />Median Age: '
+            +d['Median Age'])
+          .transition().style('opacity', .9);
+        })
+        .on('mouseout', function(d) {
+          d3.select(this).transition()
+          .style('fill', function(d) { 
+            return color_scale2(d['Median Age']) })
+          d3.select('.tooltip')
+          .style('visibility','hidden')
+          .transition().style('opacity', 0);
+        });
+    });
+  </script>
+</body>
+</html>
