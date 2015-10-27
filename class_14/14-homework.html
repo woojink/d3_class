@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Woojin Kim - Class 14 Homework</title>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,300' rel='stylesheet' type='text/css'>
+  <style>
+    /* Main components */
+    body {
+      font-family: 'Open Sans', 'Helvetica', sans-serif;
+      /*letter-spacing: -1px;*/
+    }
+
+    svg {
+      display: block;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: normal;
+      margin: 25px auto 5px auto;
+    }
+
+    h2 {
+      background-color: #d3d3d3;
+      color: #fff;
+      width: 70%;
+      min-width: ;
+      padding: 10px 20px 10px 20px;
+      margin: 20px auto 20px auto;
+    }
+
+    h3 {
+      margin: 15px auto 7px auto;
+      text-align: center;
+    }
+
+    /* divs */
+    div.main {
+      margin: auto;
+      max-width: 700px;
+    }
+
+    div.chart-container {
+      text-align: center;
+    }
+
+    div.subtitle {
+        text-align: center;
+    }
+
+    div.footer {
+      clear: both;
+      margin-top: 50px;
+      position: relative;
+      bottom: 25px;
+      right: 25px;
+      text-align: right;
+      font-size: 80%;
+      color: grey;
+    }
+
+    p.infobox {
+      visibility: hidden;
+      text-align: center;
+      height: 12px;
+      }
+    p.description {
+      font-size: 80%;
+      margin: 10px auto 10px auto;
+    }
+    p.sidenote {
+      font-size: 70%;
+      color: grey;
+      max-width: 900px;
+      margin: 5px auto 0px auto;
+    }
+    p.source {
+      font-size: 70%;
+      width: 100%;
+      margin: 10px auto 10px auto;
+      text-align: right;
+    }
+
+    div.tooltip {
+      position: absolute;
+      visibility: hidden;
+      font-size: 75%;
+      color: #333333;
+      background-color: #e6e6e6;
+      opacity: .95;
+      padding: 5px;
+    }
+
+    div#map {
+      margin: 10px 10px 10px auto;
+      display: inline-block;
+    }
+    div#chart {
+      display: inline-block;
+    }
+
+    /* Misc */
+    .label {
+      font-family: sans-serif;
+    font-size: 80%;
+    fill: #505050;
+    }
+
+    .title {
+      font-weight: bold;
+    }
+
+    .axis text {
+      font-family: sans-serif;
+      font-size: 11px;
+      fill: #505050;
+    }
+
+    .axis path, line {
+      fill: none;
+      stroke: grey;
+      shape-rendering: crispEdges;
+    }
+
+    .float-label {
+      font-size: 70%;
+      fill: #111111;
+    }
+
+    hr {
+      border: 0;
+      height: 0;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 20px;
+      width: 70%;
+    }
+
+    .chart-runner, .runner {
+      opacity: 0.6;
+      fill: red;
+    }
+
+    .route {
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+    <h1>Woojin Kim (wk2246)</h1>
+    <div class="subtitle">Homework for Class 14</div>
+    <hr />
+    <div class="main">
+      <p class="description"><strong>2014 NYC Half-Marathon.</strong> It was my first half-marathon, so it's a bit 
+        erratic, but the course is nice to look at on a map as it spans a large portion of Manhattan.
+        Watch where I was and how <em>elevated</em> I was at <span id="time"></span>.</p>
+      <p class="source">Source: Self, tracked using iPhone 5 and Runkeeper</p>
+    </div>
+    <div class="chart-container">
+          <div id="map"></div><br />
+          <div id="chart"></div>
+    </div>
+
+  <script>
+  var time_map = d3.map();
+
+  queue()
+    .defer(d3.json, "nyc.geojson")
+    .defer(d3.json, "gpx.json")
+    //   , function(d) {
+    //   data = d['gpx']['trk']['trkseg']['trkpt'];
+    //   data.forEach(function(d2){
+    //     var time = d2['time'];
+    //     time_map.set(time,d);
+    //   })
+    // }
+    //)
+    .await(function(error, nyc_json, gpx_json) {
+      // GeoJSON data in nyc.geojson
+      var nyc = nyc_json['features'];
+      var gpx = gpx_json['gpx']['trk']['trkseg']['trkpt'];
+      
+      var height = 450, width = 500;
+      var map_svg = d3.select("#map")
+                    .append("svg")
+                    .attr('height', height)
+                    .attr('width', width);      
+      
+      var projection = d3.geo.mercator()
+        .translate([width / 2,height / 2])
+        .center([-73.9912, 40.7506])
+        .scale(150000);
+
+      var run = d3.svg.line()
+        .x(function(d) { return projection([ d['-lon'], d['-lat'] ])[0]; })
+        .y(function(d) { return projection([ d['-lon'], d['-lat'] ])[1]; });
+
+      var path = d3.geo.path().projection(projection);
+
+      // NYC map
+      var map = map_svg.append("g");
+      map.selectAll("path")
+        .data(nyc)
+        .enter()
+        .append("path")
+        .attr('d', path)
+        .style('fill', 'lightgrey')
+        .style('stroke', 'lightgrey')
+        .style('stroke-width', 0.8)
+        .style('opacity', 0.7)
+        .style('stroke-opacity', 0.5);
+
+      // Entire route
+      group = d3.nest().entries(gpx)
+      var track = map_svg.append("g");
+      track.append('path')
+        .attr('class', 'route')
+        .attr('d', run(group))
+        .style('fill', 'none')
+        .style('stroke', 'grey')
+        .style('stroke-width', 1.5);
+
+      // Current location
+      var runner = map_svg.append('g');
+      runner.append('circle')
+        .attr('class', 'runner')
+        .attr('cx', 0)
+        .attr('cy', 0)
+        .attr('r', 1);
+
+      //--------------------
+      // Set dimensions
+      var svg_height = 230, svg_width = 1000;
+      var margin = {
+        'top': 10,
+        'right': 10,
+        'bottom': 50,
+        'left': 50
+      };
+      var chart_height = svg_height - margin.top - margin.bottom;
+      var chart_width = svg_width - margin.left - margin.right;
+
+      // Create drawing areas
+      var chart_svg = d3.select('#chart')
+        .append('svg')
+        .attr('height', svg_height)
+        .attr('width', svg_width);
+
+      // Grey background
+      chart_svg.append('rect')
+        .attr('width', chart_width)
+        .attr('height', chart_height)
+        .attr('transform', "translate(" + margin.left + ", " + margin.top + ")")
+        .style('fill','#f0f0f0');
+
+      var chart = chart_svg.append("g")
+        .attr('transform', "translate(" + margin.left + ", " + margin.top + ")");
+
+      // Time formats
+      var axis_time = d3.time.format('%H:%M');
+      var text_time = d3.time.format('%H:%M:%S')
+      var time_format = d3.time.format.iso;
+
+      // Set scales
+      var alt_max = d3.max(gpx, function(d){ return +d['ele']; })
+      var time_min = d3.min(gpx, function(d){ return time_format.parse(d['time']); })
+      var time_max = d3.max(gpx, function(d){ return time_format.parse(d['time']); })
+
+      var x_scale = d3.time.scale()
+        .domain([time_min, time_max])
+        .range([0, chart_width]);
+      var y_scale = d3.scale.linear()
+        .domain([0, alt_max+5])
+        .range([chart_height, 0]);
+
+      // Draw the axes
+      var y_axis = d3.svg.axis()
+        .scale(y_scale)
+        .orient("left");
+      var x_axis = d3.svg.axis()
+        .scale(x_scale)
+        .orient("bottom")
+        .tickFormat(axis_time);
+      
+      chart.append("g")
+          .attr("class", "y-axis axis")
+          .call(y_axis);
+      chart.append("g")
+          .attr("class", "x-axis axis")
+          .attr("transform", "translate(0," + chart_height + ")")
+          .call(x_axis);
+
+      // Axes labels
+      var x_text = chart_svg.append('text')
+        .text('Time')
+        .attr('x', svg_width/2)
+        .attr('y', svg_height-10)
+        .attr('text-anchor','middle')
+        .attr('class', 'label');
+      var y_text = chart_svg.append('text')
+        .attr('x', 10)
+        .attr('y', (svg_height-margin.bottom-margin.top)/2+margin.top)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'label')
+        .attr('transform','rotate(-90 10 ' + ((svg_height-margin.bottom-margin.top)/2+margin.top) + ')')
+        .text('Altitude (m)');
+
+      // Altitude line
+      var alt_line = d3.svg.line()
+        .x(function(d){ return x_scale(time_format.parse(d['time'])); })
+        .y(function(d){ return y_scale(d['ele']); });
+
+      var elevation_line = chart.append('g');
+      elevation_line.append('path')
+        .datum(gpx)
+        .attr("d", function(d){
+          return alt_line(d);
+        })
+        .style("fill", "none")
+        .style("stroke", 'grey')
+        .style('stroke-opacity', 0.3)
+        .style('stroke-width', 2);
+
+      var circle_area = chart.append('g');
+      circle_area.append('circle')
+        .attr('class', 'chart-runner')
+        .attr('cx', 0)
+        .attr('cy', 0);
+
+      var float_text = map.append('g');
+      float_text.append('text')
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('class', 'float-label');
+
+      //--------------------
+      // Animation
+      i = 0;
+      setInterval(function() {
+        if (i >= gpx.length) { i = 0; }
+        var current_loc = gpx[i];
+        update_location(current_loc);
+        current_time = time_format.parse(current_loc['time']);
+        d3.select("#time").text(text_time(current_time) + " AM, March 16, 2014");
+
+        i = i+1;
+      }, 10);
+
+      function update_location(current_loc) {
+        current_coor = projection([ current_loc['-lon'], current_loc['-lat'] ]);
+        current_time = time_format.parse(current_loc['time']);
+        runner.selectAll('circle')
+          .attr('r', 10)
+          .attr('cx', current_coor[0] )
+          .attr('cy', current_coor[1] )
+        circle_area.selectAll('circle')
+          .attr('r', 10)
+          .attr('cx', x_scale(current_time))
+          .attr('cy', y_scale(current_loc['ele']));
+
+        // Location text
+        float_text.selectAll('text')
+            .attr('x', current_coor[0]+10)
+            .attr('y', current_coor[1]);
+        if (current_time < time_format.parse('2014-03-16T12:53:14Z')) {
+          float_text.selectAll('text') .text('Central Park'); }
+        else if ((current_time >= time_format.parse('2014-03-16T12:53:14Z')) && 
+                  (current_time < time_format.parse('2014-03-16T13:15:00Z'))) {
+          float_text.selectAll('text').text('Midtown'); }
+        else if ((current_time >= time_format.parse('2014-03-16T13:15:00Z')) && 
+                  (current_time < time_format.parse('2014-03-16T13:23:00Z'))) {
+          float_text.selectAll('text').text('Chelsea'); }
+        else if ((current_time >= time_format.parse('2014-03-16T13:23:00Z')) && 
+                  (current_time < time_format.parse('2014-03-16T13:34:00Z'))) {
+          float_text.selectAll('text').text('Greenwich'); }
+        else if ((current_time >= time_format.parse('2014-03-16T13:34:00Z')) && 
+                  (current_time < time_format.parse('2014-03-16T13:41:00Z'))) {
+          float_text.selectAll('text').text('Tribeca'); }
+        else {
+          float_text.selectAll('text').text('Financial District'); }
+      };
+    });
+  </script>
+</body>
+</html>
