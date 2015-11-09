@@ -2,7 +2,8 @@
 <html>
 <head>
   <title>Woojin Kim - Class 11 Homework</title>
-  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>  
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,300' rel='stylesheet' type='text/css'>
   <style>
     /* Main components */
     body {
@@ -146,7 +147,7 @@
   <script>
     format = d3.format(',')
 
-    d3.json("/hw10/table_2010_census_data.geojson", function(error, data) {
+    d3.json("table_2010_census_data.geojson", function(error, data) {
       /* Let's break out our features into another variable... */
       var tracts = data['features'];
 
