@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Woojin Kim - Class 16 Homework</title>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js'></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,300' rel='stylesheet' type='text/css'>
+
+  <style>
+    /* Main components */
+    body {
+      font-family: 'Open Sans', 'Helvetica', sans-serif;
+      /*letter-spacing: -1px;*/
+    }
+
+    svg {
+      display: block;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: normal;
+      margin: 25px auto 5px auto;
+    }
+
+    h2 {
+      background-color: #d3d3d3;
+      color: #fff;
+      width: 70%;
+      min-width: ;
+      padding: 10px 20px 10px 20px;
+      margin: 20px auto 20px auto;
+    }
+
+    h3 {
+      font-weight: bold;
+      /*text-align: right;*/
+      margin: 20px auto 5px auto;
+    }
+
+    /* divs */
+    div.main {
+      margin: auto;
+      max-width: 1000px;
+    }
+
+    div.subtitle {
+        text-align: center;
+    }
+
+    div.footer {
+      clear: both;
+      margin-top: 50px;
+      position: relative;
+      bottom: 25px;
+      right: 25px;
+      text-align: right;
+      font-size: 80%;
+      color: grey;
+    }
+
+    p.infobox {
+      visibility: hidden;
+      text-align: center;
+      height: 12px;
+      }
+    p.description {
+      font-size: 80%;
+      margin: 5px auto 10px auto;
+    }
+    p.sidenote {
+      font-size: 70%;
+      color: grey;
+      max-width: 900px;
+      margin: 5px auto 0px auto;
+    }
+    p.source {
+      font-size: 80%;
+      width: 100%;
+      margin: -15px auto 10px auto;
+      text-align: right;
+    }
+
+    div.tooltip {
+      position: absolute;
+      visibility: hidden;
+      font-size: 75%;
+      color: #333333;
+      background-color: #e6e6e6;
+      opacity: .95;
+      padding: 5px;
+    }
+
+    /* Misc */
+    .label {
+      font-family: sans-serif;
+    font-size: 80%;
+    fill: #505050;
+    }
+
+    .title {
+      font-weight: bold;
+    }
+
+    .axis text {
+      font-family: sans-serif;
+      font-size: 11px;
+      fill: #505050;
+    }
+
+    .axis path, line {
+      fill: none;
+      stroke: grey;
+      shape-rendering: crispEdges;
+    }
+
+    .float-label {
+      font-size: 70%;
+      fill: #7F7F7F;
+    }
+
+    hr {
+      border: 0;
+      height: 0;
+      border-top: 1px solid #e0e0e0;
+      margin-top: 20px;
+      width: 70%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Woojin Kim (wk2246)</h1>
+    <div class="subtitle">Homework for Class 16</div>
+    <hr />
+    <div class="main">
+        <h3>How "smart" is your neighbourhood?</h3>
+        <p class="description"> Is there a difference in education level between neighbourhoods
+          based on SAT scores? Using average SAT scores recorded for the graduating seniors are available on NYC Open Data, both individual high school
+          scores and aggregated mean SAT scores for ZIP code areas are shown. As many neighbourhoods have none or only one high school, with a single school
+          serving multiple ZIP code areas, the aggregated map is unable to show performance of neighbourhoods without high schools. In addition, many of the top performing schools like Stuyvesant High School and The Bronx High School of Science are specialized high schools drawing students from throughout NYC, not necessarily representative of the performance of the students living in that area. There are some general trends in schools' performances, but there are few enough
+          schools that the individual school map is perhaps more useful, particularly in identifying which schools are performing especially well or poorly.</p>
+
+        <p class="description"><a href="https://data.cityofnewyork.us/Education/SAT-Results/f9bf-2cp4">NYC SAT Results</a> provided average SAT subject scores for
+          most high schools in NYC, with unique DBN codes associated with each high school. Overall SAT score column was created in Numbers, adding up the subject scores.
+          <a href="https://data.cityofnewyork.us/dataset/DOE-High-School-Directory-2013-2014/u553-m549">DOE High School Directory 2013-2014</a>
+          provided the names and coordinates of the high schools, also with unique DBN codes. Using "Joins" function in QGIS, I was able to associate
+          SAT scores with each high school in the more complete high school database. Lastly, "Points in Polygon" tool in QGIS was used to aggregate
+          score data for each ZIP code area provided in the <a href="http://catalog.opendata.city/dataset/nyc-zip-code-tabulation-areas">NYC ZIP Code GeoJSON</a> file.
+        </p>
+
+        <div id="map1"></div>
+        <div id="map2"></div>
+
+        <p class="source">Source: <a href="https://data.cityofnewyork.us/Education/SAT-Results/f9bf-2cp4">NYC SAT Results</a>, 
+          <a href="https://data.cityofnewyork.us/dataset/DOE-High-School-Directory-2013-2014/u553-m549">DOE High School Directory 2013-2014</a>, and
+          <a href="http://catalog.opendata.city/dataset/nyc-zip-code-tabulation-areas">NYC ZIP Code GeoJSON</a></p>
+
+        <div class="tooltip"></div>
+
+  <script>
+    // Move element to front. Source: https://gist.github.com/trtg/3922684
+    d3.selection.prototype.moveToFront = function() {
+      return this.each(function(){
+      this.parentNode.appendChild(this);
+      });
+    };
+    format = d3.format(',')
+
+    queue()
+    .defer(d3.json, "SAT_appended_total_clean.geojson")
+    .defer(d3.csv, "SAT_appended_total_clean.csv")
+    .await(function(error, nyc_json, school_csv) {
+      var zips = nyc_json['features'];
+
+      // Data clean-up
+      zips.forEach(function(d){
+        if (+d['properties']['SAT_Result'] > 0){ d['SAT_Result'] = +d['properties']['SAT_Result']; }
+        else { d['SAT_Result'] = null; }
+
+        if (+d['properties']['PNTCNT'] > 0){ d['num_schools'] = d['properties']['PNTCNT']; }
+        else { d['num_schools'] = 0; }
+
+        d['ZIP_name'] = d['properties']['PO_NAME'];
+        d['ZIP'] = d['properties']['postalCode'];
+        
+      })
+
+      // Common SVG properties
+      var svg_height = 600, svg_width = 630;
+      var margins = 0;
+      var height = svg_height - margins * 2;
+      var width = svg_width - margins * 2;
+
+      var projection = d3.geo.mercator()
+        .translate([width / 2,height / 2])
+        .center([-73.9912, 40.7106])
+        .scale(60000);
+
+      var path = d3.geo.path().projection(projection);
+      
+      // --------------------------------------------------------------------------------
+      // Map 1
+      var svg1 = d3.select("#map1")
+        .append("svg")
+        .attr('height', svg_height)
+        .attr('width', svg_width);
+
+      var map1 = svg1.append("g").attr("transform", "translate(" + margins + "," + margins + ")");
+
+      // Score ranges
+      var min_SAT1 = d3.min(school_csv, function(d){ return +d['SAT_Results_Total']; })
+      var max_SAT1 = d3.max(school_csv, function(d){ return +d['SAT_Results_Total']; })
+
+      // Colour scale
+      var color_scale1 = d3.scale.linear().domain([min_SAT1, max_SAT1]).range(['#ffffff','#08306b']);
+
+      // Draw the NYC map by ZIP
+      map1.selectAll('path')
+        .data(zips)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .style('fill', '#dddddd')
+        .style('stroke', '#a0a0a0')
+        .style('stroke-width', 0.8)
+        .style('stroke-opacity', 0.5)
+        .style('opacity',0.50);
+
+      // Add the schools, coloured by SAT scores
+      var school_layer = svg1.append('g');
+      school_layer.selectAll('circle')
+        .data(school_csv)
+        .enter()
+        .append('circle')
+        .attr('r', 3)
+        .attr('cx', function(d){
+          return projection([d['X'],d['Y']])[0]
+        })
+        .attr('cy', function(d){
+          return projection([d['X'],d['Y']])[1]
+        })
+        .style('fill', function(d){
+           return color_scale1(+d['SAT_Results_Total']);
+        })
+        .on('mouseover', function(d) {
+          d3.select(this).transition().attr('r', 10);
+          d3.select(this).moveToFront();
+          d3.select('.tooltip')
+          .style('visibility','visible')
+          .style('top', d3.event.pageY+10 + 'px')
+          .style('left', d3.event.pageX+10 + 'px')
+          .html('<strong>'+d['Printed_Name']+'</strong><br />Mean SAT score: '
+            + format(d3.round(d['SAT_Results_Total'],0)))
+          .transition().style('opacity', .9);
+        })
+        .on('mouseout', function(d) {
+          d3.select(this).transition().attr('r', 3);
+          d3.select('.tooltip')
+          .style('visibility','hidden')
+          .transition().style('opacity', 0)
+        });
+
+      // --------------------------------------------------------------------------------
+      // Map 2
+      var svg2 = d3.select("#map2")
+        .append("svg")
+        .attr('height', svg_height)
+        .attr('width', svg_width);
+
+      var map2 = svg2.append("g").attr("transform", "translate(" + margins + "," + margins + ")");
+
+      // Score ranges
+      var min_SAT2 = d3.min(zips, function(d){ return d['SAT_Result']; })
+      var max_SAT2 = d3.max(zips, function(d){ return d['SAT_Result']; })
+
+      // Colour scale
+      var color_scale2 = d3.scale.linear().domain([min_SAT2, max_SAT2]).range(['#ffffff','#08306b']);
+
+      // Draw the map
+      map2.selectAll('path')
+        .data(zips)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .style('fill', function(d) {
+          return color_scale2(d['SAT_Result']);
+        })
+        .style('stroke', '#a0a0a0')
+        .style('stroke-width', 0.15)
+        .style('opacity',0.85)
+        .on('mouseover', function(d) {
+          d3.select(this).style('opacity',1);
+          d3.select('.tooltip')
+          .style('visibility','visible')
+          .style('top', d3.event.pageY+10 + 'px')
+          .style('left', d3.event.pageX+10 + 'px')
+          .html('<strong>'+d['ZIP_name']+'</strong> (' + d['ZIP'] + ')<br />Mean SAT score: '
+            + format(d3.round(d['SAT_Result'],0)) + ', based on ' + d['num_schools'] + ' school(s)')
+          .transition().style('opacity', .9);
+        })
+        .on('mouseout', function(d) {
+          d3.select(this).style('opacity',.85);
+          d3.select('.tooltip')
+          .style('visibility','hidden')
+          .transition().style('opacity', 0);
+        });
+    });
+  </script>
+  <hr />
+        <h3>Average Green Taxi trip distances</h3>
+        <p class="description">Is there a clear pattern in how far the taxi trip distances are based on pick-up location?
+          Using <a href="https://data.cityofnewyork.us/Transportation/2015-Green-Taxi-Trip-Data/gi8d-wdg5" title="2015 Green Taxi Trip Data">2015 Green Taxi Trip dataset</a>,
+          it's possible to see pick-up locations and trip distances for every Green Taxi pick-up. As expected (or perhaps not), trip distances from the outskirts of NYC 
+          tend to be the longest. Are people travelling back to Manhattan or just travelling back to more populated areas in the respective boroughs? It would be an
+          interesting visualization to make use of the drop-off locations as well in the future. Also interesting: Green Taxis seem to be incredibly popular for going back to
+          Manhattan in the hip areas of Brooklyn!</p>
+
+        <p class="description">Since QGIS (and my computer) was having a hard time processing too many trips, I arbitrarily cut off the dataset to the first 20,000 
+          trips shown on the CSV file. The <a href="https://data.cityofnewyork.us/Transportation/2015-Green-Taxi-Trip-Data/gi8d-wdg5" title="2015 Green Taxi Trip Data">2015 Green Taxi Trip dataset</a> provided the pick-up coordinates and the trip distances for respective trips. "Points in Polygon" tool in QGIS was used to obtain the mean trip
+          distances for each ZIP code area.</p>
+
+        <div id="map3"></div>
+        <p class="source">Source: <a href="https://data.cityofnewyork.us/Transportation/2015-Green-Taxi-Trip-Data/gi8d-wdg5" title="2015 Green Taxi Trip Data">2015 Green Taxi Trip dataset</a> and <a href="http://catalog.opendata.city/dataset/nyc-zip-code-tabulation-areas">NYC ZIP Code GeoJSON</a></p>
+    </div>
+
+  <script>
+      var svg_height = 600, svg_width = 630;
+      var margins = 0;
+      var height = svg_height - margins * 2;
+      var width = svg_width - margins * 2;
+
+      var projection = d3.geo.mercator()
+        .translate([width / 2,height / 2])
+        .center([-73.9912, 40.7106])
+        .scale(60000);
+
+      var path = d3.geo.path().projection(projection);
+
+    // Map 3
+    queue()
+    .defer(d3.json, "green_taxi_dist.geojson")
+    .await(function(error, green_taxi) {
+      var zips = green_taxi['features'];
+
+      // Data clean-up
+      zips.forEach(function(d){
+        if (+d['properties']['distance'] > 0){ d['distance'] = +d['properties']['distance']; }
+        else { d['distance'] = null; }
+
+        if (+d['properties']['PNTCNT'] > 0){ d['num_trips'] = d['properties']['PNTCNT']; }
+        else { d['num_trips'] = 0; }
+
+        d['ZIP_name'] = d['properties']['PO_NAME'];
+        d['ZIP'] = d['properties']['postalCode'];
+      })
+
+      var svg3 = d3.select("#map3")
+        .append("svg")
+        .attr('height', svg_height)
+        .attr('width', svg_width);
+
+      var map3 = svg3.append("g").attr("transform", "translate(" + margins + "," + margins + ")");
+
+      // Score ranges
+      var min_dist = d3.min(zips, function(d){ return d['distance']; })
+      var max_dist = d3.max(zips, function(d){ return d['distance']; })
+
+      // Colour scale
+      var all_areas = zips.map(function(d){ return d['distance']; });
+      var color_scale3 = d3.scale.quantile().domain(all_areas).range(['#f7fcf5','#e5f5e0','#c7e9c0','#a1d99b','#74c476','#41ab5d','#238b45','#006d2c','#00441b']);
+
+      // Draw the map
+      map3.selectAll('path')
+        .data(zips)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .style('fill', function(d) {
+          return color_scale3(d['distance']);
+        })
+        .style('stroke', '#a0a0a0')
+        .style('stroke-width', 0.15)
+        .style('opacity',0.80)
+        .on('mouseover', function(d) {
+          d3.select(this).style('opacity',1);
+          d3.select('.tooltip')
+          .style('visibility','visible')
+          .style('top', d3.event.pageY+10 + 'px')
+          .style('left', d3.event.pageX+10 + 'px')
+          .html('<strong>'+d['ZIP_name']+'</strong> (' + d['ZIP'] + ')<br />Average trip distance: '
+            + format(d3.round(d['distance'],1)) + ' mi, based on ' + +d['num_trips'] + ' trips')
+          .transition().style('opacity', .9);
+        })
+        .on('mouseout', function(d) {
+          d3.select(this).style('opacity', 0.85);
+          d3.select('.tooltip')
+          .style('visibility','hidden')
+          .transition().style('opacity', 0);
+        });
+      });
+  </script>
+</body>
+</html>
